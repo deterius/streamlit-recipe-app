@@ -72,6 +72,7 @@ with col1:
     INGREDIENT_FILE = "ingredients.csv"
     RECIPE_FILE = "recipes.json"
     ingredient_df = pd.read_csv(INGREDIENT_FILE)
+    ingredient_df["基础单位价格"] = pd.to_numeric(ingredient_df["基础单位价格"], errors='coerce')
 
 
     # Step 1: Recipe Info
@@ -129,19 +130,23 @@ st.session_state.selected_ingredient = st.selectbox(
 
 # quantity input
 st.number_input("使用量（g 或 ml）", min_value=0.0, step=1.0, key="ingredient_qty")
+# ing note
+ingredient_note = st.text_input("备注（例如：约10片）", key="ingredient_note")
 
 if st.button("➕ 添加到菜谱"):
         
     if st.session_state.selected_ingredient:
         ing = filtered_df[filtered_df["食材中文名"] == st.session_state.selected_ingredient].iloc[0]
         qty = st.session_state.ingredient_qty
+        st.write("DEBUG", qty, ing["基础单位价格"])
         subtotal = qty * ing["基础单位价格"]
         st.session_state.recipe_ingredients.append({
             "编号": ing["编号"],
             "食材中文名": ing["食材中文名"],
             "用量": qty,
             "单价": ing["基础单位价格"],
-            "小计": subtotal
+            "小计": subtotal,
+            "备注": ingredient_note
         })
         st.success(f"已添加：{ing['食材中文名']}，用量：{qty}")
         st.session_state.clear_fields = True
