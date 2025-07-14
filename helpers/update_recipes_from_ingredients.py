@@ -1,10 +1,12 @@
 import pandas as pd
 import json
 from datetime import datetime
+import copy
+
 
 # File paths
-INGREDIENT_FILE = "ingredients.csv"
-RECIPE_FILE = "recipes.json"
+INGREDIENT_FILE = "../ingredients.csv"
+RECIPE_FILE = "../recipes.json"
 
 # Load ingredients and create a mapping by 编号
 ingredients_df = pd.read_csv(INGREDIENT_FILE)
@@ -16,8 +18,11 @@ with open(RECIPE_FILE, "r", encoding="utf-8") as f:
     recipes = json.load(f)
 
 updated_count = 0
+now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-for recipe in recipes:
+for i, recipe in enumerate(recipes):
+    original = copy.deepcopy(recipe)
+
     total_cost = 0
     updated_ings = []
 
@@ -34,7 +39,6 @@ for recipe in recipes:
             total_cost += subtotal
         else:
             print(f"⚠️ 编号 {serial} not found in ingredients.csv — skipping cost update for this item.")
-            # Still try to include the subtotal if already present
             subtotal = ing.get("小计", 0)
             total_cost += subtotal
 
@@ -49,8 +53,10 @@ for recipe in recipes:
         print(f"⚠️ Error computing 成本百分比 for recipe {recipe.get('编号')}: {e}")
         recipe["成本百分比"] = 0
 
-    recipe["修改时间"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    updated_count += 1
+    # ✅ Only update if something actually changed
+    if recipe != original:
+        recipe["修改时间"] = now
+        updated_count += 1
 
 # Save updated file
 with open(RECIPE_FILE, "w", encoding="utf-8") as f:

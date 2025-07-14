@@ -1,13 +1,24 @@
 import streamlit as st
-
-st.set_page_config(page_title="食材数据库", layout="centered")
-
 import pandas as pd
 import os
 from datetime import datetime
 import unicodedata #for weChat pasting
 
 from helper_functions import compute_unit_cost
+
+st.set_page_config(page_title="食材数据库", layout="wide")
+
+st.sidebar.title("🍽 RouRou Navigation")
+
+with st.sidebar.expander("🥬 Ingredients", expanded=True):
+    st.page_link("pages/All_Ingredients.py", label="📦 Ingredient List")
+    st.page_link("pages/Add_Ingredient.py", label="➕ Add Ingredient")
+
+with st.sidebar.expander("🍽 Recipes", expanded=True):
+    st.page_link("pages/All_Recipes.py", label="📖 All Recipes")
+    st.page_link("pages/Add_Recipe.py", label="➕ Add Recipe")
+    
+    
 
 # File Name for database
 DATA_FILE = "ingredients.csv"

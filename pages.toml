@@ -1,0 +1,19 @@
+[[pages]]
+path = "pages/1_ingredient_list.py"
+name = "📦 Ingredient List"
+section = "🥬 Ingredients"
+
+[[pages]]
+path = "pages/2_add_ingredient.py"
+name = "➕ Add Ingredient"
+section = "🥬 Ingredients"
+
+[[pages]]
+path = "pages/3_all_recipes.py"
+name = "📖 All Recipes"
+section = "🍽 Recipes"
+
+[[pages]]
+path = "pages/4_add_recipe.py"
+name = "➕ Add Recipe"
+section = "🍽 Recipes"

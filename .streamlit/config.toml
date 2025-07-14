@@ -1,0 +1,11 @@
+[theme]
+base="light"
+
+[server]
+runOnSave = true
+
+[multipage]
+showNavigation = false
+
+[ui]
+hide_sidebar_nav = true
