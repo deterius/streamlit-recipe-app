@@ -171,7 +171,10 @@ def render_recipe(recipe, index):
         if st.button("✏️ 编辑", key=f"edit_{key_suffix}"):
             st.session_state.edit_recipe = recipe
             st.session_state.edit_mode = True
-            st.switch_page("pages/3_add_recipe.py")
+            st.session_state.recipe_ingredients = recipe["食材"]
+            st.session_state.procedure_steps = recipe["步骤"]
+            st.session_state.force_reset_add_recipe = False
+            st.switch_page("pages/Add_Recipe.py")
     with col2:
         if st.button("🗑️ 删除", key=f"delete_{key_suffix}"):
             st.session_state.confirm_delete_index = index
@@ -275,7 +278,7 @@ def display_recipe(recipe):
             if st.button("✏️ 编辑", key=f"edit_{key_suffix}"):
                 st.session_state.edit_recipe = recipe
                 st.session_state.edit_mode = True
-                st.switch_page("pages/3_add_recipe.py")
+                st.switch_page("pages/Add_Recipe.py")
 
         with col2:
             if st.button("🗑️ 删除", key=f"delete_{key_suffix}"):

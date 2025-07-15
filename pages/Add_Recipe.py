@@ -7,6 +7,31 @@ import uuid
 
 from helper_functions import save_uploaded_file, calculate_waste_item
 
+
+
+# Initialize edit mode
+if "edit_mode" not in st.session_state:
+    st.session_state.edit_mode = False
+
+if "edit_recipe" not in st.session_state:
+    st.session_state.edit_recipe = None
+if "recipe_ingredients" not in st.session_state:
+    st.session_state.recipe_ingredients = []
+if "procedure_steps" not in st.session_state:
+    st.session_state.procedure_steps = []
+
+# --- Clear edit mode when not editing ---
+if not st.session_state.edit_mode:
+    st.session_state.edit_recipe = None
+    st.session_state.recipe_ingredients = []
+    st.session_state.procedure_steps = []
+    st.session_state.selected_category = ""
+    st.session_state.selected_ingredient = ""
+    st.session_state.ingredient_qty = 0.0
+
+# Update current page
+st.session_state.last_visited_page = "Add_Recipe"
+
 # session state check:
 if "selected_category" not in st.session_state:
     st.session_state.selected_category = ""
@@ -17,11 +42,11 @@ if "selected_ingredient" not in st.session_state:
 if "ingredient_qty" not in st.session_state:
     st.session_state.ingredient_qty = 0.0
     
-if st.session_state.get("clear_fields", False):
-    st.session_state.selected_category = ""
-    st.session_state.selected_ingredient = ""
-    st.session_state.ingredient_qty = 0.0
-    st.session_state.clear_fields = False
+# if st.session_state.get("clear_fields", False):
+#     st.session_state.selected_category = ""
+#     st.session_state.selected_ingredient = ""
+#     st.session_state.ingredient_qty = 0.0
+#     st.session_state.clear_fields = False
 
 # Check for edit mode
 edit_mode = st.session_state.get("edit_mode", False)
@@ -40,8 +65,17 @@ if edit_mode and edit_recipe:
         st.session_state.procedure_steps = edit_recipe["步骤"]
 
 # --- CONFIG ---
-st.set_page_config(page_title="新增菜谱", layout="centered")
+st.set_page_config(page_title="新增菜谱")
 st.markdown("此页用于添加新菜谱")
+
+
+if st.session_state.edit_mode == True:
+    if st.button("➕ 新建菜谱"):
+        st.session_state.edit_mode = False
+        st.session_state.edit_recipe = None
+        st.session_state.recipe_ingredients = []
+        st.session_state.procedure_steps = []
+        st.rerun()
 
 # recipie editing mode
 if st.session_state.get("go_to_add_recipe"):
@@ -71,8 +105,9 @@ with col1:
 
 
     # Load ingredients database
-    INGREDIENT_FILE = "ingredients.csv"
-    RECIPE_FILE = "recipes.json"
+    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    INGREDIENT_FILE = os.path.join(BASE_DIR, "ingredients.csv")
+    RECIPE_FILE = os.path.join(BASE_DIR, "recipes.json")
     ingredient_df = pd.read_csv(INGREDIENT_FILE)
     ingredient_df["基础单位价格"] = pd.to_numeric(ingredient_df["基础单位价格"], errors='coerce')
 
@@ -162,11 +197,9 @@ with col1:
 
 
     if st.button("➕ 添加到菜谱"):
-            
         if st.session_state.selected_ingredient:
             ing = ingredient_df[ingredient_df["编号"] == st.session_state.selected_ingredient].iloc[0]
             qty = st.session_state.ingredient_qty
-            st.write("DEBUG", qty, ing["基础单位价格"])
             subtotal = qty * ing["基础单位价格"]
             st.session_state.recipe_ingredients.append({
                 "编号": ing["编号"],
@@ -177,7 +210,12 @@ with col1:
                 "备注": ingredient_note
             })
             st.success(f"已添加：{ing['食材中文名']}，用量：{qty}")
-            st.session_state.clear_fields = True
+            
+            # Reset only ingredient input values
+            st.session_state.selected_ingredient = ""
+            st.session_state.ingredient_qty = 0.0
+            st.session_state.ingredient_note = ""
+            
             st.rerun()
 
         
