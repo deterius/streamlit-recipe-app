@@ -122,7 +122,8 @@ if st.button("✅ 保存菜谱"):
             "售价": price, "总成本": round(sum(i["小计"] for i in st.session_state.ingredients), 2),
             "成本百分比": round(sum(i["小计"] for i in st.session_state.ingredients)/price*100,2),
             "食材": st.session_state.ingredients, "步骤": st.session_state.steps,
-            "备注": notes, "主图": main_img, "创建时间": recipe["创建时间"] if recipe else now, "修改时间": now
+            "备注": notes, "主图": main_img, "创建时间": recipe["创建时间"] if recipe else now, "修改时间": now,
+            "SKUID": recipe.get("SKUID", "") if recipe else ""
         }
         if recipe:
             idx = next(i for i,r in enumerate(recs) if r["编号"] == rid)
