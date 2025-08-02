@@ -62,7 +62,10 @@ def merge_ingredients_into_recipes(recipes, ingredient_csv_path="ingredients.csv
 
 
 def calculate_waste_item(ingredients: list) -> dict:
-    total = sum(i["小计"] for i in ingredients if i["编号"] != "WASTE")
+    """Create a waste line item representing 10% of ingredient cost.
+
+    Missing "小计" values are treated as 0 to avoid KeyError."""
+    total = sum(i.get("小计", 0) for i in ingredients if i.get("编号") != "WASTE")
     waste_cost = round(total * 0.10, 2)
     return {
         "编号": "WASTE",
@@ -70,8 +73,9 @@ def calculate_waste_item(ingredients: list) -> dict:
         "用量": "",
         "单价": "",
         "小计": waste_cost,
-        "备注": "估算损耗（10%）"
+        "备注": "估算损耗（10%）",
     }
+
 
 def clean_ingredient_df(df: pd.DataFrame) -> pd.DataFrame:
     # Columns that should be treated as strings
