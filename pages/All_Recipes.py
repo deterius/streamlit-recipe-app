@@ -49,13 +49,17 @@ if selected_category == "全部":
     for cat_name, group in grouped.items():
         st.subheader(f"📂 分类: {cat_name}")
         for index, recipe in enumerate(group):
-            with st.expander(f"{recipe['编号']} {recipe['中文名']} / {recipe['英文名']} — 售价: ¥{recipe['售价']}"):
+            skuid = recipe.get("SKUID") or "N/A"
+            label = f"{recipe['编号']} {recipe['中文名']} / {recipe['英文名']} — SKUID: {skuid} — 售价: ¥{recipe['售价']}"
+            with st.expander(label):
                 render_recipe(recipe, index, recipes, save_recipes)
 
 else:
     # Show only selected category
     filtered_recipes = [r for r in recipes if r.get("分类") == selected_category]
-    for index, recipe in enumerate(filtered_recipes):  
-        with st.expander(f"{recipe['中文名']} / {recipe['英文名']} — 售价: ¥{recipe['售价']}"):
+    for index, recipe in enumerate(filtered_recipes):
+        skuid = recipe.get("SKUID") or "N/A"
+        label = f"{recipe['编号']} {recipe['中文名']} / {recipe['英文名']} — SKUID: {skuid} — 售价: ¥{recipe['售价']}"
+        with st.expander(label):
             render_recipe(recipe, index, recipes, save_recipes)
             

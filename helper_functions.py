@@ -120,6 +120,7 @@ def render_recipe(recipe, index, recipes, save_recipes):
         st.markdown(f"**备注**: {recipe['备注']}")
     with col2:
         st.markdown(f"**编号**: {recipe['编号']}")
+        st.markdown(f"**SKUID**: {recipe.get('SKUID') or 'N/A'}")
         st.markdown(f"**创建时间**: {recipe['创建时间']}")
         st.markdown(f"**修改时间**: {recipe['修改时间']}")
 
@@ -254,8 +255,11 @@ def save_uploaded_file(uploaded_file, filename_hint=None):
 
 def display_recipe(recipe):
     key_suffix = recipe["编号"]
-    with st.expander(f"{recipe['中文名']} / {recipe['英文名']} — 售价: ¥{recipe['售价']}"):
+    skuid = recipe.get("SKUID") or "N/A"
+    label = f"{recipe['中文名']} / {recipe['英文名']} — SKUID: {skuid} — 售价: ¥{recipe['售价']}"
+    with st.expander(label):
         st.markdown(f"**编号**: {recipe['编号']}")
+        st.markdown(f"**SKUID**: {skuid}")
         st.markdown(f"**总成本**: ¥{recipe['总成本']}")
         st.markdown(f"**成本百分比**: {recipe['成本百分比']}%")
         st.markdown(f"**创建时间**: {recipe['创建时间']}")
