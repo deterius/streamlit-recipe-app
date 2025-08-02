@@ -93,7 +93,7 @@ def clean_ingredient_df(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def render_recipe(recipe, index):
+def render_recipe(recipe, index, recipes, save_recipes):
     key_suffix = recipe["编号"]
 
     # Try to display image (even if missing)
@@ -149,34 +149,38 @@ def render_recipe(recipe, index):
     # Steps
     st.markdown("### 制作步骤")
     steps = recipe.get("步骤", [])
-    for i, step in enumerate(steps):
-        st.markdown(f"**步骤 {i+1}**:")
-        col1, col2 = st.columns([3, 2])  # 3:2 ratio for text : image
-        with col1:
-            st.markdown(step.get("描述", "无描述"))
-        with col2:
-            img_name = step.get("图片名")
-            if img_name:
-                step_img_path = os.path.join("uploaded_images", img_name)
-                if os.path.exists(step_img_path):
-                    st.image(step_img_path, width=150, caption=step.get("描述", "无描述"))
-                else:
-                    st.warning("⚠️ 找不到步骤图片")
+
+    # Set how many steps per row
+    steps_per_row = 3
+
+    # Loop through steps in chunks
+    for row_start in range(0, len(steps), steps_per_row):
+        cols = st.columns(steps_per_row)
+        for idx, step in enumerate(steps[row_start:row_start + steps_per_row]):
+            with cols[idx]:
+                st.markdown(f"**步骤 {row_start + idx + 1}**")
+                img_name = step.get("图片名")
+                if img_name:
+                    step_img_path = os.path.join("uploaded_images", img_name)
+                    if os.path.exists(step_img_path):
+                        st.image(step_img_path, use_container_width=True)
+                    else:
+                        st.warning("⚠️ 找不到步骤图片")
+                st.markdown(step.get("描述", "无描述"))
 
     # Edit / Delete Buttons
     if "confirm_delete_index" not in st.session_state:
         st.session_state.confirm_delete_index = None
+
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("✏️ 编辑", key=f"edit_{key_suffix}"):
+        if st.button("✏️ 编辑", key=f"edit_btn_{recipe['编号']}"):
             st.session_state.edit_recipe = recipe
             st.session_state.edit_mode = True
-            st.session_state.recipe_ingredients = recipe["食材"]
-            st.session_state.procedure_steps = recipe["步骤"]
-            st.session_state.force_reset_add_recipe = False
             st.switch_page("pages/Add_Recipe.py")
+
     with col2:
-        if st.button("🗑️ 删除", key=f"delete_{key_suffix}"):
+        if st.button("🗑️ 删除", key=f"delete_btn_{recipe['编号']}"):
             st.session_state.confirm_delete_index = index
         if st.session_state.confirm_delete_index == index:
             st.warning(f"你确定要删除菜谱 `{recipe['中文名']}` 吗？这将无法恢复。", icon="⚠️")

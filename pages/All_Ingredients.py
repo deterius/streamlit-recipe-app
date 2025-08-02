@@ -90,7 +90,7 @@ edited_df = st.data_editor(
     key="editable_ingredients",
     column_config={
         "编号": st.column_config.TextColumn("编号", disabled=True),
-        "单位价格": st.column_config.NumberColumn("单位价格", disabled=True),
+        # "单位价格": st.column_config.NumberColumn("单位价格", disabled=True),
         "创建时间": st.column_config.TextColumn("创建时间", disabled=True),
         "修改时间": st.column_config.TextColumn("修改时间", disabled=True),
     }

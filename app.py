@@ -10,13 +10,13 @@ st.set_page_config(page_title="食材数据库", layout="wide")
 
 
 pages = {
-    "🥬 Ingredients": [
-        st.Page("pages/All_Ingredients.py", title="View Ingredients"),
-        st.Page("pages/Add_Ingredient.py", title="Add Ingredient"),
+    "🥬 食材 Ingredients": [
+        st.Page("pages/All_Ingredients.py", title="所有食材 View Ingredients"),
+        st.Page("pages/Add_Ingredient.py", title="加新食材 Add Ingredient"),
     ],
-    "📖 Recipes": [
-        st.Page("pages/All_Recipes.py", title="All Recipes"),
-        st.Page("pages/Add_Recipe.py", title="Add Recipe"),
+    "📖 配方 Recipes": [
+        st.Page("pages/All_Recipes.py", title="所有配方 All Recipes"),
+        st.Page("pages/Add_Recipe.py", title="加新配方 Add Recipe"),
     ],
 }
 

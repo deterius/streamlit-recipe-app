@@ -1,399 +1,222 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-import os
-import json
-import uuid
+import os, json
+from helper_functions import save_uploaded_file
 
-from helper_functions import save_uploaded_file, calculate_waste_item
-
-
-
-# Initialize edit mode
+# --- INITIALIZE STATE ---
 if "edit_mode" not in st.session_state:
     st.session_state.edit_mode = False
-
 if "edit_recipe" not in st.session_state:
     st.session_state.edit_recipe = None
-if "recipe_ingredients" not in st.session_state:
-    st.session_state.recipe_ingredients = []
-if "procedure_steps" not in st.session_state:
-    st.session_state.procedure_steps = []
+if "ingredients" not in st.session_state:
+    st.session_state.ingredients = []
+if "steps" not in st.session_state:
+    st.session_state.steps = []
 
-# --- Clear edit mode when not editing ---
-if not st.session_state.edit_mode:
-    st.session_state.edit_recipe = None
-    st.session_state.recipe_ingredients = []
-    st.session_state.procedure_steps = []
-    st.session_state.selected_category = ""
-    st.session_state.selected_ingredient = ""
-    st.session_state.ingredient_qty = 0.0
+# On entering edit mode, populate fields and session_state
+if st.session_state.edit_mode and st.session_state.edit_recipe:
+    recipe = st.session_state.edit_recipe
 
-# Update current page
-st.session_state.last_visited_page = "Add_Recipe"
+    # Populate ingredients only once when page first loads
+    if not st.session_state.ingredients:
+        st.session_state.ingredients = recipe.get("食材", [])
 
-# session state check:
-if "selected_category" not in st.session_state:
-    st.session_state.selected_category = ""
+    if not st.session_state.steps:
+        st.session_state.steps = recipe.get("步骤", [])
+else:
+    recipe = None
 
-if "selected_ingredient" not in st.session_state:
-    st.session_state.selected_ingredient = ""
-
-if "ingredient_qty" not in st.session_state:
-    st.session_state.ingredient_qty = 0.0
-    
-# if st.session_state.get("clear_fields", False):
-#     st.session_state.selected_category = ""
-#     st.session_state.selected_ingredient = ""
-#     st.session_state.ingredient_qty = 0.0
-#     st.session_state.clear_fields = False
-
-# Check for edit mode
-edit_mode = st.session_state.get("edit_mode", False)
-edit_recipe = st.session_state.get("edit_recipe", None)
-
-if "recipe_ingredients" not in st.session_state:
-    st.session_state.recipe_ingredients = []
-
-if "procedure_steps" not in st.session_state:
-    st.session_state.procedure_steps = []
-    
-if edit_mode and edit_recipe:
-    if not st.session_state.recipe_ingredients:
-        st.session_state.recipe_ingredients = edit_recipe["食材"]
-    if not st.session_state.procedure_steps:
-        st.session_state.procedure_steps = edit_recipe["步骤"]
-
-# --- CONFIG ---
+# --- PAGE CONFIG ---
 st.set_page_config(page_title="新增菜谱")
-st.markdown("此页用于添加新菜谱")
-
-
-if st.session_state.edit_mode == True:
-    if st.button("➕ 新建菜谱"):
-        st.session_state.edit_mode = False
-        st.session_state.edit_recipe = None
-        st.session_state.recipe_ingredients = []
-        st.session_state.procedure_steps = []
-        st.rerun()
-
-# recipie editing mode
-if st.session_state.get("go_to_add_recipe"):
-    st.session_state.go_to_add_recipe = False # reset flag
+st.title("🍽️ 新增 / 编辑 菜谱")
+# --- CLEAR ALL FIELDS BUTTON ---
+if st.button("🧹 清空所有字段，开始新建菜谱", type="primary"):
+    st.session_state.edit_mode = False
+    st.session_state.edit_recipe = None
+    st.session_state.mode = "new"
+    st.session_state.ingredients = []
+    st.session_state.steps = []
     st.rerun()
 
-# Step 1: Recipe Info
-st.title("新增菜谱")
+# --- SWITCH TO NEW MODE ---
+if st.session_state.get("mode") == "edit":
+    if st.button("🆕 新建菜谱"):
+        st.session_state.mode = "new"
+        st.session_state.edit_recipe = None
+        st.session_state.ingredients = []
+        st.session_state.steps = []
+        st.rerun()
 
-col1, col2 =st.columns(2)
+# --- LOAD DATABASES ---
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+ING_FILE = os.path.join(BASE_DIR, "ingredients.csv")
+REC_FILE = os.path.join(BASE_DIR, "recipes.json")
+df_ing = pd.read_csv(ING_FILE)
+df_ing["基础单位价格"] = pd.to_numeric(df_ing["基础单位价格"], errors="coerce")
+
+# --- RECIPE INFO ---
+col1, col2 = st.columns(2)
 with col1:
-    # Menu classification
+    name_en = st.text_input("英文名", value=recipe["英文名"] if recipe else "")
+    name_zh = st.text_input("中文名", value=recipe["中文名"] if recipe else "")
     CATEGORIES = [
         "BBQ/烤肉", "Seafood/海鲜", "Soups/汤", "Appetizers/小吃", 
         "Late Night Snacks/下酒菜", "Semi-finished/半成品", 
         "Small dishes/小菜", "Bento/便当"
     ]
-    recipe_category = st.selectbox(
-        "菜单分类", CATEGORIES, 
-        index=0 if not edit_mode else CATEGORIES.index(edit_recipe["分类"]) if edit_recipe.get("分类") in CATEGORIES else 0)
-
-    # Load values based on edit or new mode
-    recipe_name_en = edit_recipe["英文名"] if edit_mode and edit_recipe else ""
-    recipe_name_zh = edit_recipe["中文名"] if edit_mode and edit_recipe else ""
-    selling_price = edit_recipe["售价"] if edit_mode and edit_recipe else 0.0
-
-
-
-    # Load ingredients database
-    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    INGREDIENT_FILE = os.path.join(BASE_DIR, "ingredients.csv")
-    RECIPE_FILE = os.path.join(BASE_DIR, "recipes.json")
-    ingredient_df = pd.read_csv(INGREDIENT_FILE)
-    ingredient_df["基础单位价格"] = pd.to_numeric(ingredient_df["基础单位价格"], errors='coerce')
-
-
-    # Step 1: Recipe Info
-    st.subheader("📝 菜谱基本信息")
-
-    recipe_name_en = st.text_input("菜谱英文名", value=recipe_name_en)
-    recipe_name_zh = st.text_input("菜谱中文名", value=recipe_name_zh)
-    selling_price = st.number_input("售价（人民币）", value=selling_price, min_value=0.0, step=0.5)
-    
-    notes = st.text_area("备注 / Notes", value=edit_recipe["备注"] if edit_mode and edit_recipe else "")
-
+    category = st.selectbox(
+        "菜单分类", CATEGORIES,
+        index=CATEGORIES.index(recipe["分类"]) if recipe and recipe.get("分类") in CATEGORIES else 0
+    )
+    price = st.number_input("售价 (¥)", value=recipe["售价"] if recipe else 0.0, min_value=0.0, step=0.5)
+    notes = st.text_area("备注", value=recipe["备注"] if recipe else "")
 with col2:
-    # (Step 3: Procedure & images)
-    st.subheader("📷 主图和备注")
-    current_main_img = edit_recipe["主图"] if edit_mode and edit_recipe else ""
-    if current_main_img:
-        st.markdown(f"🖼️ 当前主图: {current_main_img}")
-        st.image(os.path.join("uploaded_images", current_main_img), width=300, caption="当前主图")
-        
-    main_img = st.file_uploader("上传新主图（将替换现有图片）", type=["jpg", "jpeg", "png"])
-    main_img_name = ""
-    # Only try to save image if both recipe name and image are present
+    img = st.file_uploader("主图（选填）", type=["jpg", "png"])
+    
+    # Use existing image if editing
+    main_img = recipe["主图"] if recipe else ""
+
+    # Save new uploaded image
+    if img:
+        if name_en.strip():
+            main_img = save_uploaded_file(img, f"{name_en.strip()}_main")
+        else:
+            st.warning("请输入英文名后再上传图片")
+
+    # Display preview if there's a main image path
     if main_img:
-        if recipe_name_en.strip():
-            main_img_name = save_uploaded_file(main_img, f"{recipe_name_en.strip()}_main")
+        img_path = os.path.join("uploaded_images", main_img)
+        if os.path.exists(img_path):
+            st.image(img_path, width=250, caption="主图预览")
         else:
-            st.warning("⚠️ 请先输入菜谱英文名，再上传主图！")
+            st.warning("⚠️ 找不到主图文件")
 
-
-col1, col2 = st.columns(2)
-with col1:   
-
-    # Step 2: Add ingredients
-    st.subheader("🧂 添加食材")
-
-    # Session state to hold added ingredients
-    if "recipe_ingredients" not in st.session_state:
-        st.session_state.recipe_ingredients = []
-
-    # Ingredient selector
-    categories = ingredient_df["食材分类"].dropna().unique().tolist()
-    categories.sort()
-
-    st.session_state.selected_category = st.selectbox(
-        "选择食材分类", [""] + categories,
-        index=([""] + categories).index(st.session_state.selected_category)
-    )
-
-    filtered_df = ingredient_df[ingredient_df["食材分类"] == st.session_state.selected_category] if st.session_state.selected_category else ingredient_df
-
-    # Create a mapping: 编号 => 食材中文名 (编号 is unique)
-    ingredient_options = {
-        row["编号"]: f"{row['食材中文名']} ({row['编号']})"
-        for _, row in filtered_df.iterrows()
-    }
-
-    ingredient_keys = list(ingredient_options.keys())
-    ingredient_labels = list(ingredient_options.values())
-
-    # Convert previous 中文名 selection to 编号 if needed
-    if st.session_state.selected_ingredient and not st.session_state.selected_ingredient.startswith("VEG-") and not st.session_state.selected_ingredient.startswith("RME-"):
-        matched_row = filtered_df[filtered_df["食材中文名"] == st.session_state.selected_ingredient]
-        if not matched_row.empty:
-            st.session_state.selected_ingredient = matched_row.iloc[0]["编号"]
-
-    # Get current index
-    selected_index = ingredient_keys.index(st.session_state.selected_ingredient) if st.session_state.selected_ingredient in ingredient_keys else 0
-
-    # Use 编号 as the real value
-    selected_ingredient_label = st.selectbox(
-        "选择食材",
-        [""] + ingredient_labels,
-        index=selected_index + 1 if st.session_state.selected_ingredient in ingredient_keys else 0
-    )
-
-    # Update selection back to 编号
-    if selected_ingredient_label:
-        selected_index = ingredient_labels.index(selected_ingredient_label)
-        st.session_state.selected_ingredient = ingredient_keys[selected_index]
-
-    # quantity input
-    st.number_input("使用量（g 或 ml）", min_value=0.0, step=1.0, key="ingredient_qty")
-    # ing note
-    ingredient_note = st.text_input("备注（例如：约10片）", key="ingredient_note")
-
-
-    if st.button("➕ 添加到菜谱"):
-        if st.session_state.selected_ingredient:
-            ing = ingredient_df[ingredient_df["编号"] == st.session_state.selected_ingredient].iloc[0]
-            qty = st.session_state.ingredient_qty
-            subtotal = qty * ing["基础单位价格"]
-            st.session_state.recipe_ingredients.append({
-                "编号": ing["编号"],
-                "食材中文名": ing["食材中文名"],
-                "用量": qty,
-                "单价": ing["基础单位价格"],
-                "小计": subtotal,
-                "备注": ingredient_note
+# --- ADD INGREDIENT FORM ---
+with st.expander("🧂 添加食材"):
+    ing_cat = st.selectbox("食材分类筛选", options=[""] + sorted(df_ing["食材分类"].dropna().unique().tolist()))
+    df_filt = df_ing[df_ing["食材分类"] == ing_cat] if ing_cat else df_ing
+    choices = df_filt["编号"].tolist()
+    labels = [f"{r['食材中文名']} ({r['编号']})" for _, r in df_filt.iterrows()]
+    sel = st.selectbox("选择食材", options=[""] + labels)
+    qty = st.number_input("用量 (g/ml)", min_value=0.0, step=1.0, key="ing_qty")
+    note = st.text_input("备注（选填）", key="ing_note")
+    if st.button("➕ 添加食材"):
+        if sel and qty > 0:
+            code = sel.split("(")[-1].strip(")")
+            row = df_ing[df_ing["编号"] == code].iloc[0]
+            subtotal = qty * row["基础单位价格"]
+            st.session_state.ingredients.append({
+                "编号": code, "食材中文名": row["食材中文名"],
+                "用量": qty, "单价": row["基础单位价格"],
+                "小计": subtotal, "备注": note
             })
-            st.success(f"已添加：{ing['食材中文名']}，用量：{qty}")
-            
-            # Reset only ingredient input values
-            st.session_state.selected_ingredient = ""
-            st.session_state.ingredient_qty = 0.0
-            st.session_state.ingredient_note = ""
-            
+            st.success(f"添加: {row['食材中文名']} x{qty}g")
             st.rerun()
 
-        
+# --- DISPLAY CURRENT INGREDIENTS ---
+col1, col2 = st.columns([3, 1])
+with col1:
+    if st.session_state.ingredients:
+        st.markdown("### 当前食材")
 
+        df_ing_table = pd.DataFrame(st.session_state.ingredients)
 
-
+        edited_df = st.data_editor(
+            df_ing_table,
+            num_rows="dynamic",
+            use_container_width=True,
+            column_config={
+                "编号": st.column_config.TextColumn(disabled=True),
+                "食材中文名": st.column_config.TextColumn(disabled=True),
+                "单价": st.column_config.NumberColumn(disabled=True, format="%.4f"),
+                "小计": st.column_config.NumberColumn(disabled=True, format="%.2f"),
+                "用量": st.column_config.NumberColumn(step=1.0, format="%.1f"),
+                "备注": st.column_config.TextColumn(),
+                "基础单位价格": st.column_config.NumberColumn(disabled=True, format="%.4f"),
+                
+            },
+            key="editable_ingredients"
+        )
+        st.session_state.ingredients = edited_df.to_dict("records")
 with col2:
-    # Step 3: Procedure steps
-    st.subheader("📸 制作步骤")
-    st.caption("（每步可添加图片）")
-    with st.form("step_form", clear_on_submit=True):
-        step_desc = st.text_area("步骤描述", key="step_desc")
-        step_img = st.file_uploader("上传步骤图片（可选）", type=["jpg", "jpeg", "png"], key="step_img")
-        add_step = st.form_submit_button("添加步骤")
-        if add_step:
-            if not step_desc.strip():
-                st.warning("请输入步骤描述")
-            else:
-                step_img_name = step_img.name if step_img else ""
-                if step_img:
-                    step_index = len(st.session_state.procedure_steps) + 1
-                    step_img_name = save_uploaded_file(step_img, f"{recipe_name_en}_step_{step_index}")
-                st.session_state.procedure_steps.append({
-                    "描述": step_desc.strip(),
-                    "图片名": step_img_name
-                })
-                st.success("步骤已添加")
+        st.markdown("### 🗑️ 删除单个食材")
+        for i, ing in enumerate(st.session_state.ingredients):
+            cols = st.columns([6, 1])
+            cols[0].text(f"🧂 {ing['食材中文名']} (用量: {ing['用量']}g)")
+            if cols[1].button("❌", key=f"del_ing_{i}"):
+                st.session_state.ingredients.pop(i)
+                st.rerun()
 
-
-st.divider()
-# Display current ingredients
-if st.session_state.recipe_ingredients:
-    st.subheader("📋 当前使用食材")
-    
-    # show each ingredient with a delete option
-    for i, ing in enumerate(st.session_state.recipe_ingredients):
-        cols = st.columns([3,3,2,2,1])
-        cols[0].markdown(f"**{ing['食材中文名']}**")
-        cols[1].markdown(f"用量(g/ml): {ing['用量']}")
-        try:
-            unit_price = float(ing["单价"])
-            subtotal = float(ing["小计"])
-            cols[2].markdown(f"单价: ¥{unit_price:.2f}")
-            cols[3].markdown(f"小计: ¥{subtotal:.2f}")
-        except (ValueError, TypeError):
-            cols[2].markdown("单价: 无法识别")
-            cols[3].markdown("小计: 无法识别")
-        
-        if cols[4].button("❌", key=f"delete_ing_{i}"):
-            st.session_state.recipe_ingredients.pop(i)
-            st.rerun()
        
-    
-    # Summary
-    base_cost = sum(i["小计"] for i in st.session_state.recipe_ingredients)
-    waste_cost = base_cost * 0.10
-    total_cost_with_waste = base_cost + waste_cost
-    
-    st.markdown(f"**原来成本：¥{base_cost:.2f}**")
-    st.markdown(f"**损耗成本（10%）：¥{waste_cost:.2f}**")
-    st.markdown(f"**总成本（含损耗）：¥{total_cost_with_waste:.2f}**")
 
-    if selling_price:
-        cost_pct = total_cost_with_waste / selling_price * 100
-        st.markdown(f"**成本百分比：{cost_pct:.1f}%**")
-        
-    # Optional: Clear all button
-    if st.button("🧹 清空所有食材"):
-        st.session_state.recipe_ingredients = []
-        st.rerun()                
-st.divider()       
-if st.session_state.procedure_steps:
-    st.markdown("### ✅ 当前步骤")
-    for i, step in enumerate(st.session_state.procedure_steps):
-        st.markdown(f"**步骤 {i+1}：** {step['描述']}")
-        
-        col1, col2 = st.columns(2)
+# --- ADD STEP FORM ---
+with st.expander("📷 添加步骤"):
+    step_desc = st.text_area("步骤描述")
+    step_img = st.file_uploader("步骤图片(选填)", type=["jpg", "png"])
+    if st.button("➕ 添加步骤"):
+        img_name = ""
+        if step_img:
+            img_name = save_uploaded_file(step_img, f"{name_en}_step_{len(st.session_state.steps)+1}")
+        st.session_state.steps.append({"描述": step_desc, "图片名": img_name})
+        st.success("步骤已添加")
+        st.rerun()
+
+    
+# --- DISPLAY & EDIT STEPS ---
+st.markdown("### 📝 当前步骤列表")
+for i, step in enumerate(st.session_state.steps):
+    st.markdown(f"**步骤 {i+1}**")
+
+    with st.form(f"edit_step_form_{i}", clear_on_submit=False):
+        edited_desc = st.text_area("描述", value=step["描述"], key=f"step_desc_{i}")
+        new_img = st.file_uploader("替换步骤图片（可选）", type=["jpg", "png"], key=f"step_img_{i}")
+        col1, col2 = st.columns([1, 1])
         with col1:
-            if step["图片名"]:
-                st.markdown(f"📷 当前步骤图片：{step['图片名']}")
-                st.caption("当前步骤图片预览：")
-                st.image(os.path.join("uploaded_images", step["图片名"]), width=200, caption=f"步骤 {i+1} 图片")
+            if col1.form_submit_button("💾 更新步骤"):
+                st.session_state.steps[i]["描述"] = edited_desc
+                if new_img:
+                    img_name = save_uploaded_file(new_img, f"{name_en}_step_{i+1}")
+                    st.session_state.steps[i]["图片名"] = img_name
+                st.success("步骤已更新 ✅")
+                st.rerun()
         with col2:
-            new_step_img = st.file_uploader("替换步骤图片（可选）", type=["jpg", "jpeg", "png"], key=f"replace_step_img_{i}")
-        if new_step_img:
-            new_img_name = save_uploaded_file(new_step_img, f"{recipe_name_en}_step_{i+1}")
-            st.session_state.procedure_steps[i]["图片名"] = new_img_name
-            st.success(f"步骤 {i+1} 图片已更新 ✅")
+            if col2.form_submit_button("❌ 删除此步骤"):
+                st.session_state.steps.pop(i)
+                st.success("步骤已删除 🗑️")
+                st.rerun()
 
-        if st.button(f"❌ 删除步骤 {i+1}", key=f"del_step_{i}"):
-            st.session_state.procedure_steps.pop(i)
-            st.rerun()
-st.divider()
-# -- Save recipe
-st.subheader("💾 保存菜谱")
-if st.button("保存菜谱"):
-    if not recipe_name_en or not recipe_name_zh:
-        st.warning("请输入菜谱中英文名")
-    elif not st.session_state.recipe_ingredients:
-        st.warning("请至少添加一个食材")
-    elif not st.session_state.procedure_steps:
-        st.warning("请至少添加一个步骤")
-    elif not selling_price:
-        st.warning("请输入售价")
+    # Preview image
+    if step.get("图片名"):
+        st.image(os.path.join("uploaded_images", step["图片名"]), width=250, caption=f"步骤 {i+1} 图片")
+
+# --- SAVE RECIPE ---
+if st.button("✅ 保存菜谱"):
+    if not (name_en and name_zh and st.session_state.ingredients and price > 0):
+        st.warning("请填写完整：中英文名、至少一个食材、步骤、售价")
     else:
-        # Load existing
-        if os.path.exists(RECIPE_FILE):
-            with open(RECIPE_FILE, "r", encoding="utf-8") as f:
-                existing_recipes = json.load(f)
-        else:
-            existing_recipes = []
-
-        # --- Generate recipe ID and timestamps ---
-        created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        modified_at = created_at
-        
-        if edit_mode and edit_recipe:
-            recipe_id = edit_recipe["编号"]
-            created_at = edit_recipe["创建时间"]
-        else:
-            # Ensure unique recipe ID
-            existing_ids = [r["编号"] for r in existing_recipes]
-            num = 1
-            while True:
-                candidate = f"RC-{num:04d}"
-                if candidate not in existing_ids:
-                    recipe_id = candidate
-                    break
-                num += 1
-        
-
-        total_cost = sum(i["小计"] for i in st.session_state.recipe_ingredients)
-        cost_pct = round(total_cost / selling_price * 100, 2)
-
-        new_recipe = {
-            "编号": recipe_id,
-            "英文名": recipe_name_en,
-            "中文名": recipe_name_zh,
-            "分类": recipe_category,
-            "售价": selling_price,
-            "总成本": round(total_cost, 2),
-            "成本百分比": cost_pct,
-            "食材": st.session_state.recipe_ingredients,
-            "步骤": st.session_state.procedure_steps,
-            "备注": notes,
-            "主图": main_img_name if main_img else current_main_img,
-            "创建时间": created_at,
-            "修改时间": created_at
+        recs = json.load(open(REC_FILE, encoding="utf-8")) if os.path.exists(REC_FILE) else []
+        rid = recipe["编号"] if recipe else f"RC-{len(recs)+1:04d}"
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        new = {
+            "编号": rid, "英文名": name_en, "中文名": name_zh, "分类": category,
+            "售价": price, "总成本": round(sum(i["小计"] for i in st.session_state.ingredients), 2),
+            "成本百分比": round(sum(i["小计"] for i in st.session_state.ingredients)/price*100,2),
+            "食材": st.session_state.ingredients, "步骤": st.session_state.steps,
+            "备注": notes, "主图": main_img, "创建时间": recipe["创建时间"] if recipe else now, "修改时间": now
         }
-
-        if edit_mode and edit_recipe:
-            found = False  
-            for i, r in enumerate(existing_recipes):
-                if r["编号"] == edit_recipe["编号"]:
-                    new_recipe["编号"] = edit_recipe["编号"]
-                    new_recipe["创建时间"] = edit_recipe["创建时间"]
-                    new_recipe["修改时间"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    existing_recipes[i] = new_recipe
-                    found = True
-                    break
-            if not found:
-                existing_recipes.append(new_recipe)
+        if recipe:
+            idx = next(i for i,r in enumerate(recs) if r["编号"] == rid)
+            recs[idx] = new
         else:
-            existing_recipes.append(new_recipe)
-        
-        with open(RECIPE_FILE, "w", encoding="utf-8") as f:
-            json.dump(existing_recipes, f, ensure_ascii=False, indent=2)
+            recs.append(new)
+        json.dump(recs, open(REC_FILE, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+        st.success("✅ 保存成功！")
+        st.session_state.mode = "new"
+        st.session_state.ingredients = []
+        st.session_state.steps = []
 
-        # Immediately read it back to verify
-        with open(RECIPE_FILE, "r", encoding="utf-8") as f:
-            data_check = json.load(f)
-            
+        import time
+        time.sleep(1)  # optional: short delay to show success
 
-        st.success(f"菜谱 {recipe_name_zh} / {recipe_name_en} 已保存 ✅")
-
-        st.session_state.edit_mode = False
-        st.session_state.edit_recipe = None
-        
-        # Reset session
-        st.session_state.recipe_ingredients = []
-        st.session_state.procedure_steps = []
+        st.switch_page("pages/All_Recipes.py")
