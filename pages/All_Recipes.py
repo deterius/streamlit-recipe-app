@@ -5,7 +5,7 @@ from helper_functions import render_recipe, merge_ingredients_into_recipes
 
 
 
-# path to recipies
+# path to recipes
 RECIPE_FILE = "recipes.json"
 
 # paget setup
@@ -26,7 +26,7 @@ recipes = merge_ingredients_into_recipes(recipes)
 
 
 if not recipes:
-    st.info("No recipies currently exists")
+    st.info("No recipes currently exist")
     st.stop()
     
 # Helper file, save updated lists back to file
