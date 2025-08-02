@@ -71,6 +71,7 @@ with col1:
     )
     price = st.number_input("售价 (¥)", value=recipe["售价"] if recipe else 0.0, min_value=0.0, step=0.5)
     notes = st.text_area("备注", value=recipe["备注"] if recipe else "")
+    skuid = st.text_input("SKUID", value=recipe.get("SKUID", "") if recipe else "")
 with col2:
     img = st.file_uploader("主图（选填）", type=["jpg", "png"])
     
@@ -204,7 +205,7 @@ if st.button("✅ 保存菜谱"):
             "成本百分比": round(sum(i["小计"] for i in st.session_state.ingredients)/price*100,2),
             "食材": st.session_state.ingredients, "步骤": st.session_state.steps,
             "备注": notes, "主图": main_img, "创建时间": recipe["创建时间"] if recipe else now, "修改时间": now,
-            "SKUID": recipe.get("SKUID", "") if recipe else ""
+            "SKUID": skuid
         }
         if recipe:
             idx = next(i for i,r in enumerate(recs) if r["编号"] == rid)
