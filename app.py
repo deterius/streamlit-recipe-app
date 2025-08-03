@@ -18,6 +18,10 @@ pages = {
         st.Page("pages/All_Recipes.py", title="所有配方 All Recipes"),
         st.Page("pages/Add_Recipe.py", title="加新配方 Add Recipe"),
     ],
+     "饮料 Beverages": [
+        st.Page("pages/Beverages.py", title="饮料 Beverages"),
+        
+    ],
 }
 
 pg = st.navigation(pages)
